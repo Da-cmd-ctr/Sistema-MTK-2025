@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - Marroquin´s Team Kenpo Karate</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+  <!-- Barra superior -->
+  <nav class="navbar navbar-dark bg-danger">
+    <div class="container-fluid">
+      <div class="row w-100 align-items-center">
+        <div class="col-2">
+          <img src="Logomtk.png" alt="Logo Empresa" class="img-fluid" style="max-height:40px;">
+        </div>
+        <div class="col-8 text-center">
+          <span class="navbar-brand mb-0 h1">Marroquin´s Team Kenpo Karate</span>
+        </div>
+        <div class="col-2"></div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Contenido principal -->
+  <div class="container d-flex justify-content-center align-items-center vh-100">
+    <div class="card shadow p-4" style="width: 360px;">
+      <h3 class="text-center mb-4">Login</h3>
+
+      <form id="loginForm" novalidate>
+        <div class="input-group input-group-sm mb-3 has-validation">
+          <span class="input-group-text">@</span>
+          <input type="email" class="form-control" name="correo" placeholder="Correo" autocomplete="username" required>
+          <div class="invalid-feedback">Ingresa tu correo.</div>
+        </div>
+
+        <div class="input-group input-group-sm mb-3 has-validation">
+          <span class="input-group-text">🔒</span>
+          <input type="password" class="form-control" name="password" placeholder="Contraseña" autocomplete="current-password" required minlength="6">
+          <div class="invalid-feedback">Ingresa tu contraseña (mín. 6).</div>
+        </div>
+
+        <div id="loginError" class="text-danger text-center mb-3" style="display:none;">Usuario o contraseña incorrectos.</div>
+
+        <div class="d-grid">
+          <button type="submit" class="btn btn-danger btn-sm">Iniciar Sesión</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Barra inferior -->
+  <footer class="navbar fixed-bottom navbar-dark bg-danger">
+    <div class="container">
+      <div class="row w-100">
+        <div class="col text-center text-white">
+          <small>© 2025 Marroquin´s Team Kenpo Karate - Todos los derechos reservados</small>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+<script>
+const API = "http://localhost:3000";
+const form = document.getElementById('loginForm');
+const errorDiv = document.getElementById('loginError');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!form.checkValidity()) {
+    form.classList.add('was-validated');
+    return;
+  }
+
+  const fd = new FormData(form);
+  const payload = { correo: fd.get('correo').trim(), password: fd.get('password').trim() };
+
+  try {
+    const resp = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+
+    if (!resp.ok || !data.ok) {
+      errorDiv.textContent = data.mensaje || 'Usuario o contraseña incorrectos.';
+      errorDiv.style.display = 'block';
+      return;
+    }
+
+    // guardar sesión
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('rol', data.usuario.rol);
+    localStorage.setItem('correo', data.usuario.correo);
+
+    // ir al dashboard
+    window.location.href = 'dashboard.html';
+  } catch (err) {
+    console.error(err);
+    errorDiv.textContent = 'Error en el servidor.';
+    errorDiv.style.display = 'block';
+  }
+});
+</script>
+</body>
+</html>

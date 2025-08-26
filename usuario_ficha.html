@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ficha de Usuario - MTK</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-danger">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="usuarios.html">← Usuarios</a>
+    <span id="who" class="navbar-text text-white small"></span>
+  </div>
+</nav>
+
+<div class="container py-4">
+  <h3 class="mb-3">Ficha del usuario</h3>
+  <div id="card" class="card shadow-sm">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Correo</label>
+          <input id="correo" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Rol</label>
+          <select id="rol" class="form-select">
+            <option>administrador</option>
+            <option>secretaria</option>
+            <option>sensei</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Estado</label>
+          <select id="estado" class="form-select">
+            <option value="activo">activo</option>
+            <option value="baja">baja</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-4 d-flex flex-wrap gap-2">
+        <button id="guardar" class="btn btn-danger">Guardar cambios</button>
+        <button id="resetPass" class="btn btn-outline-danger">Cambiar contraseña</button>
+        <button id="darBaja" class="btn btn-outline-warning">Dar de baja</button>
+        <button id="activar" class="btn btn-outline-success">Activar</button>
+      </div>
+      <div id="msg" class="small text-muted mt-2"></div>
+    </div>
+  </div>
+</div>
+
+<footer class="navbar fixed-bottom navbar-dark bg-danger">
+  <div class="container text-center text-white">
+    <small>© 2025 Marroquin´s Team Kenpo Karate</small>
+  </div>
+</footer>
+
+<script>
+const API = "http://localhost:3000";
+const params = new URLSearchParams(location.search);
+const id = Number(params.get('id'));
+
+function guard(){
+  const token = localStorage.getItem("token");
+  const rol = localStorage.getItem("rol");
+  const correo = localStorage.getItem("correo");
+  if(!token){ window.location.href = "login.html"; return null; }
+  if(rol !== 'administrador' && rol !== 'secretaria'){
+    alert("Acceso denegado para tu rol");
+    window.location.href = "dashboard.html"; return null;
+  }
+  document.getElementById("who").textContent = `${correo} • ${rol}`;
+  return token;
+}
+const token = guard();
+
+async function load(){
+  const r = await fetch(`${API}/usuarios/${id}`, { headers:{ Authorization:`Bearer ${token}` }});
+  const data = await r.json();
+  if(!r.ok || !data.ok){ alert(data.mensaje || "No se pudo cargar"); return; }
+  document.getElementById('correo').value = data.data.Correo;
+  document.getElementById('rol').value = data.data.Rol;
+  document.getElementById('estado').value = data.data.Estado;
+}
+document.getElementById('guardar').onclick = async () => {
+  const Correo = document.getElementById('correo').value.trim();
+  const Rol = document.getElementById('rol').value;
+  const Estado = document.getElementById('estado').value;
+  const r = await fetch(`${API}/usuarios/${id}`, {
+    method:'PUT',
+    headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+    body: JSON.stringify({ Correo, Rol, Estado })
+  });
+  const msg = document.getElementById('msg');
+  msg.textContent = r.ok ? 'Guardado ✓' : 'Error al guardar';
+};
+document.getElementById('resetPass').onclick = async () => {
+  const Password = prompt('Nueva contraseña:');
+  if(!Password) return;
+  const r = await fetch(`${API}/usuarios/${id}/password`, {
+    method:'PATCH',
+    headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+    body: JSON.stringify({ Password })
+  });
+  alert(r.ok ? 'Contraseña cambiada' : 'Error al cambiar contraseña');
+};
+document.getElementById('darBaja').onclick = async () => {
+  const r = await fetch(`${API}/usuarios/${id}/baja`, { method:'PATCH', headers:{ Authorization:`Bearer ${token}` }});
+  if(r.ok){ await load(); } else alert('Error al dar de baja');
+};
+document.getElementById('activar').onclick = async () => {
+  const r = await fetch(`${API}/usuarios/${id}/activar`, { method:'PATCH', headers:{ Authorization:`Bearer ${token}` }});
+  if(r.ok){ await load(); } else alert('Error al activar');
+};
+load();
+</script>
+</body>
+</html>

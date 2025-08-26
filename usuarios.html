@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Usuarios - Marroquin´s Team Kenpo Karate</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-danger">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="dashboard.html">← Panel</a>
+    <span id="who" class="navbar-text text-white small"></span>
+  </div>
+</nav>
+
+<div class="container py-4">
+  <div class="d-flex align-items-center mb-3">
+    <h3 class="me-auto">Usuarios</h3>
+    <button id="refreshBtn" class="btn btn-outline-secondary btn-sm">Recargar</button>
+  </div>
+
+  <!-- Crear -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body">
+      <h5 class="mb-3">Crear nuevo usuario</h5>
+      <form id="frmCreate" class="row g-3" novalidate>
+        <div class="col-md-4">
+          <label class="form-label">Correo</label>
+          <input type="email" class="form-control form-control-sm" id="cCorreo" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Contraseña</label>
+          <input type="text" class="form-control form-control-sm" id="cPass" required minlength="6">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Rol</label>
+          <select class="form-select form-select-sm" id="cRol" required>
+            <option value="administrador">administrador</option>
+            <option value="secretaria">secretaria</option>
+            <option value="sensei">sensei</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-danger btn-sm" type="submit">Crear</button>
+          <span id="cMsg" class="ms-2 small text-muted"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Lista -->
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <select id="estado" class="form-select form-select-sm" style="max-width:200px">
+          <option value="">Todos</option>
+          <option value="activo">Solo activos</option>
+          <option value="baja">Solo de baja</option>
+        </select>
+        <select id="sort" class="form-select form-select-sm" style="max-width:200px">
+          <option value="Correo">Orden: Correo</option>
+          <option value="idUsuarios">Orden: ID</option>
+          <option value="Rol">Orden: Rol</option>
+          <option value="Estado">Orden: Estado</option>
+        </select>
+        <select id="dir" class="form-select form-select-sm" style="max-width:140px">
+          <option value="ASC">ASC</option>
+          <option value="DESC">DESC</option>
+        </select>
+        <select id="limit" class="form-select form-select-sm" style="max-width:140px">
+          <option>5</option><option selected>10</option><option>20</option>
+        </select>
+        <button id="apply" class="btn btn-sm btn-outline-danger">Aplicar</button>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+          <thead>
+            <tr>
+              <th>ID</th><th>Correo</th><th>Rol</th><th>Estado</th><th style="width:400px">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center">
+        <button id="prev" class="btn btn-sm btn-outline-secondary">« Anterior</button>
+        <span id="pageInfo" class="small text-muted"></span>
+        <button id="next" class="btn btn-sm btn-outline-secondary">Siguiente »</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="navbar fixed-bottom navbar-dark bg-danger">
+  <div class="container text-center text-white">
+    <small>© 2025 Marroquin´s Team Kenpo Karate</small>
+  </div>
+</footer>
+
+<script>
+const API = "http://localhost:3000";
+
+function guard(){
+  const token = localStorage.getItem("token");
+  const rol = localStorage.getItem("rol");
+  const correo = localStorage.getItem("correo");
+  if(!token){ window.location.href = "login.html"; return null; }
+  if(rol !== 'administrador' && rol !== 'secretaria'){
+    alert("Acceso denegado para tu rol");
+    window.location.href = "dashboard.html"; return null;
+  }
+  document.getElementById("who").textContent = `${correo} • ${rol}`;
+  return token;
+}
+
+let token = guard();
+let page = 1;
+
+async function load(){
+  if(!token) return;
+  const sort   = document.getElementById("sort").value;
+  const dir    = document.getElementById("dir").value;
+  const limit  = Number(document.getElementById("limit").value);
+  const estado = document.getElementById("estado").value; // '' | activo | baja
+
+  const url = `${API}/usuarios?page=${page}&limit=${limit}&sort=${sort}&dir=${dir}` + (estado ? `&estado=${estado}` : '');
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await r.json();
+  const tb = document.getElementById("tbody");
+  tb.innerHTML = "";
+
+  if(!r.ok || !data.ok){
+    tb.innerHTML = `<tr><td colspan="5" class="text-danger">Error: ${data.mensaje || 'no se pudo cargar'}</td></tr>`;
+    return;
+  }
+
+  data.data.forEach(u => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${u.idUsuarios}</td>
+      <td><input class="form-control form-control-sm" value="${u.Correo}" id="correo_${u.idUsuarios}"/></td>
+      <td>
+        <select class="form-select form-select-sm" id="rol_${u.idUsuarios}">
+          <option ${u.Rol==='administrador'?'selected':''}>administrador</option>
+          <option ${u.Rol==='secretaria'?'selected':''}>secretaria</option>
+          <option ${u.Rol==='sensei'?'selected':''}>sensei</option>
+        </select>
+      </td>
+      <td>
+        <select class="form-select form-select-sm" id="estado_${u.idUsuarios}">
+          <option value="activo" ${u.Estado==='activo'?'selected':''}>activo</option>
+          <option value="baja"   ${u.Estado==='baja'  ?'selected':''}>baja</option>
+        </select>
+      </td>
+      <td class="d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-outline-secondary" href="usuario_ficha.html?id=${u.idUsuarios}">Ficha</a>
+        <button class="btn btn-sm btn-danger" onclick="updateUser(${u.idUsuarios})">Guardar</button>
+        <button class="btn btn-sm btn-outline-danger" onclick="changePwd(${u.idUsuarios})">Cambiar clave</button>
+        ${
+          u.Estado === 'activo'
+          ? `<button class="btn btn-sm btn-outline-warning" onclick="darBaja(${u.idUsuarios})">Dar de baja</button>`
+          : `<button class="btn btn-sm btn-outline-success" onclick="activar(${u.idUsuarios})">Activar</button>`
+        }
+      </td>
+    `;
+    tb.appendChild(tr);
+  });
+
+  document.getElementById("pageInfo").textContent = `Página ${data.pagination.page} de ${data.pagination.pages} • Total ${data.pagination.total}`;
+  document.getElementById("prev").disabled = (page<=1);
+  document.getElementById("next").disabled = (page>=data.pagination.pages);
+}
+
+document.getElementById("prev").onclick = () => { if(page>1){ page--; load(); } };
+document.getElementById("next").onclick = () => { page++; load(); };
+document.getElementById("apply").onclick = () => { page=1; load(); };
+document.getElementById("refreshBtn").onclick = load;
+
+document.getElementById("frmCreate").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  if(!token) return;
+  const Correo = document.getElementById("cCorreo").value.trim();
+  const Password = document.getElementById("cPass").value.trim();
+  const Rol = document.getElementById("cRol").value;
+  const msg = document.getElementById("cMsg");
+  msg.textContent = "Creando...";
+  try{
+    const r = await fetch(`${API}/usuarios`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+      body: JSON.stringify({ Correo, Password, Rol })
+    });
+    const data = await r.json();
+    if(!r.ok || !data.ok){ msg.textContent = data.mensaje || "Error al crear"; return; }
+    msg.textContent = "Creado ✓";
+    e.target.reset();
+    load();
+  }catch(err){ msg.textContent = "Error de red"; }
+});
+
+async function updateUser(id){
+  if(!token) return;
+  const Correo = document.getElementById(`correo_${id}`).value.trim();
+  const Rol = document.getElementById(`rol_${id}`).value;
+  const Estado = document.getElementById(`estado_${id}`).value;
+  const r = await fetch(`${API}/usuarios/${id}`, {
+    method:"PUT",
+    headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+    body: JSON.stringify({ Correo, Rol, Estado })
+  });
+  if(r.ok){ load(); } else {
+    const d = await r.json().catch(()=>({}));
+    alert(d.mensaje || "Error al actualizar");
+  }
+}
+
+async function changePwd(id){
+  if(!token) return;
+  const Password = prompt("Nueva contraseña para id " + id + ":");
+  if(!Password) return;
+  const r = await fetch(`${API}/usuarios/${id}/password`, {
+    method:"PATCH",
+    headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+    body: JSON.stringify({ Password })
+  });
+  alert(r.ok ? "Contraseña actualizada" : "Error al actualizar contraseña");
+}
+
+async function darBaja(id){
+  const r = await fetch(`${API}/usuarios/${id}/baja`, { method:"PATCH", headers:{ Authorization:`Bearer ${token}` }});
+  if(r.ok){ load(); } else { alert("Error al dar de baja"); }
+}
+async function activar(id){
+  const r = await fetch(`${API}/usuarios/${id}/activar`, { method:"PATCH", headers:{ Authorization:`Bearer ${token}` }});
+  if(r.ok){ load(); } else { alert("Error al activar"); }
+}
+
+load();
+</script>
+</body>
+</html>

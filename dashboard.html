@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel - Marroquin´s Team Kenpo Karate</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-danger">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">
+      <img src="Logomtk.png" alt="Logo" style="height:32px" class="me-2">
+      Panel Principal
+    </a>
+    <div class="d-flex align-items-center">
+      <span id="whoami" class="text-white me-3 small"></span>
+      <button id="logoutBtn" class="btn btn-outline-light btn-sm">Salir</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container py-4">
+  <div class="row g-3">
+    <!-- Usuarios -->
+    <div class="col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="mb-1">Usuarios</h5>
+          <p class="text-muted small mb-3">Creación, edición, roles y contraseñas.</p>
+          <a id="linkUsuarios" href="usuarios.html" class="btn btn-danger">Entrar</a>
+          <div id="usuariosNote" class="small text-muted mt-2" style="display:none;">
+            Tu rol no permite acceder a Usuarios.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clases (placeholder de backend) -->
+    <div class="col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="mb-1">Clases</h5>
+          <p class="text-muted small mb-3">Programación y asistencia.</p>
+          <button id="btnClases" class="btn btn-outline-danger">Probar acceso</button>
+          <div id="clasesMsg" class="small mt-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="navbar fixed-bottom navbar-dark bg-danger">
+  <div class="container text-center text-white">
+    <small>© 2025 Marroquin´s Team Kenpo Karate</small>
+  </div>
+</footer>
+
+<script>
+const API = "http://localhost:3000";
+
+function requireAuth() {
+  const token = localStorage.getItem('token');
+  const rol = localStorage.getItem('rol');
+  const correo = localStorage.getItem('correo');
+  if (!token) { window.location.href = 'login.html'; return null; }
+  document.getElementById('whoami').textContent = `${correo} • ${rol}`;
+  // sensei no entra a usuarios
+  if (rol !== 'administrador' && rol !== 'secretaria') {
+    const link = document.getElementById('linkUsuarios');
+    link.classList.add('disabled');
+    link.setAttribute('tabindex', '-1');
+    link.setAttribute('aria-disabled', 'true');
+    document.getElementById('usuariosNote').style.display = 'block';
+  }
+  return token;
+}
+
+const token = requireAuth();
+
+document.getElementById('logoutBtn').onclick = () => {
+  localStorage.clear();
+  window.location.href = 'login.html';
+};
+
+document.getElementById('btnClases').onclick = async () => {
+  const r = await fetch(`${API}/clases`, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await r.json().catch(() => ({}));
+  const msg = document.getElementById('clasesMsg');
+  msg.textContent = r.ok ? 'OK: acceso permitido' : (data.mensaje || 'Error');
+  msg.className = 'small mt-2 ' + (r.ok ? 'text-success' : 'text-danger');
+};
+</script>
+</body>
+</html>
